@@ -1,34 +1,38 @@
-# ============================
-# 1️⃣ Build Stage
-# ============================
-FROM node:18 AS build
+# ===========================
+# 1️⃣ BUILD STAGE (Node)
+# ===========================
+FROM node:18-alpine AS build
 
-# Set working directory
 WORKDIR /app
 
-# Copy package files and install dependencies
+# Copy package.json first (better cache)
 COPY package*.json ./
+
+# Install dependencies
 RUN npm install
 
-# Copy the rest of the project
+# Copy everything
 COPY . .
 
-# Build the production version
+# Build the app
 RUN npm run build
 
 
-# ============================
-# 2️⃣ Production Stage (Nginx)
-# ============================
-FROM nginx:stable-alpine
+# ===========================
+# 2️⃣ RUN STAGE (Nginx)
+# ===========================
+FROM nginx:1.25-alpine
 
-# Remove default nginx page
+# Copy custom nginx config
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Remove default nginx website
 RUN rm -rf /usr/share/nginx/html/*
 
-# Copy built React dist files to Nginx public folder
+# Copy build output from Node stage
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# Copy a custom nginx config (optional)
+# Copy custom nginx config (optional, if you add one)
 # COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Expose port
