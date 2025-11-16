@@ -55,20 +55,18 @@ pipeline {
             }
         }
 
-        stage('Deploy on Server') {
+        stage('Deploy Container') {
             steps {
-                sshagent(['target-server-ssh']) {
-                    sh """
-                        ssh -o StrictHostKeyChecking=no user@target-server '
-                            docker pull ${DOCKERHUB_REPO}:latest
-                            if [ \$(docker ps -q -f name=${CONTAINER_NAME}) ]; then
-                                docker stop ${CONTAINER_NAME}
-                                docker rm ${CONTAINER_NAME}
-                            fi
-                            docker run -d --name ${CONTAINER_NAME} -p ${PORT}:80 ${DOCKERHUB_REPO}:latest
-                        '
-                    """
-                }
+                // Stop & remove old container if exists
+                sh """
+                    if [ \$(docker ps -q -f name=${CONTAINER_NAME}) ]; then
+                        docker stop ${CONTAINER_NAME}
+                        docker rm ${CONTAINER_NAME}
+                    fi
+                """
+
+                // Run new container
+                sh "docker run -d --name ${CONTAINER_NAME} -p ${PORT}:80 ${DOCKERHUB_REPO}:latest"
             }
         }
     }
