@@ -15,46 +15,25 @@ pipeline {
             }
         }
 
+        stage('Install Dependencies') {
+            steps {
+                sh 'npm install --legacy-peer-deps --force'
+            }
+        }
+
         stage('Build Docker Image') {
             steps {
-                script {
-                    sh """
-                        docker build -t ${DOCKERHUB_REPO}:${BUILD_NUMBER} .
-                    """
-                }
+                sh "docker build -t ${DOCKERHUB_REPO}:latest ."
             }
         }
 
         stage('Push to Docker Hub') {
             steps {
-                script {
-                    sh """
-                        echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-                        docker push ${DOCKERHUB_REPO}:${BUILD_NUMBER}
-                    """
+                withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh "echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin"
+                    sh "docker push ${DOCKERHUB_REPO}:latest"
                 }
             }
-        }
-
-        stage('Deploy Container') {
-            steps {
-                script {
-                    sh """
-                        docker stop ${CONTAINER_NAME} || true
-                        docker rm ${CONTAINER_NAME} || true
-                        docker run -d --name ${CONTAINER_NAME} -p ${PORT}:80 ${DOCKERHUB_REPO}:${BUILD_NUMBER}
-                    """
-                }
-            }
-        }
-    }
-
-    post {
-        success {
-            echo "Deployment successful!"
-        }
-        failure {
-            echo "Deployment failed."
         }
     }
 }
