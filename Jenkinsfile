@@ -5,7 +5,8 @@ pipeline {
         IMAGE_NAME = "naga-dashboard"
         DOCKERHUB_REPO = "arunprakash1177/naga-dashboard"
         CONTAINER_NAME = "naga"
-        PORT = "8080"
+        PORT = "8080"  // container port
+        HOST_PORT = "8040"  // host port
     }
 
     stages {
@@ -51,6 +52,20 @@ pipeline {
                             error "Docker push failed!"
                         }
                     }
+                }
+            }
+        }
+
+        stage('Deploy Container') {
+            steps {
+                script {
+                    sh """
+                        # Remove old container if exists
+                        docker rm -f ${CONTAINER_NAME} || true
+                        
+                        # Run new container with host port 8040 mapped to container port 8080
+                        docker run -d --name ${CONTAINER_NAME} -p ${HOST_PORT}:${PORT} ${DOCKERHUB_REPO}:latest
+                    """
                 }
             }
         }
