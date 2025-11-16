@@ -30,10 +30,36 @@ pipeline {
         stage('Push to Docker Hub') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh "echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin"
-                    sh "docker push ${DOCKERHUB_REPO}:latest"
+                    script {
+                        // Docker login
+                        def loginStatus = sh(
+                            script: """echo "\$DOCKER_PASS" | docker login -u "\$DOCKER_USER" --password-stdin""",
+                            returnStatus: true
+                        )
+
+                        if (loginStatus != 0) {
+                            error "Docker login failed! Please check your credentials or token."
+                        }
+
+                        // Push image
+                        def pushStatus = sh(
+                            script: "docker push ${DOCKERHUB_REPO}:latest",
+                            returnStatus: true
+                        )
+
+                        if (pushStatus != 0) {
+                            error "Docker push failed!"
+                        }
+                    }
                 }
             }
+        }
+    }
+
+    post {
+        always {
+            // Logout from Docker Hub to avoid leaving credentials in memory
+            sh "docker logout || true"
         }
     }
 }
